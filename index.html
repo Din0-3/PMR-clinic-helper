@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>看診幫手</title>
+<style>
+  :root { --main:#205781; --main-dark:#163e5d; --green:#28a745; --bg:#f4f4f9; --line:#e3e3ea; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang TC", "Noto Sans TC", Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+  .container { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.08); overflow: hidden; }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--line); background: #fafafc; }
+  .tab { flex: 1; padding: 14px 8px; border: none; background: none; cursor: pointer; font-size: 15px; color: #666; border-bottom: 3px solid transparent; }
+  .tab:hover { color: var(--main); background: #f0f3f8; }
+  .tab.active { color: var(--main); font-weight: 600; border-bottom-color: var(--main); background: #fff; }
+  .tab .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; font-size: 11px; line-height: 18px; border-radius: 9px; background: var(--main); color: #fff; }
+  .tab .badge:empty { display: none; }
+  .section { display: none; padding: 20px; text-align: center; }
+  .section.active { display: block; }
+  h3 { margin: 4px 0 12px; }
+
+  button.btn { margin: 5px; padding: 8px 16px; cursor: pointer; background: var(--main); color: #fff; border: none; border-radius: 4px; font-size: 14px; }
+  button.btn:hover { background: var(--main-dark); }
+
+  /* ICD */
+  .human { position: relative; width: 300px; margin: 10px auto; }
+  .human .body-svg { display: block; width: 300px; height: 300px; }
+  .clickable { position: absolute; width: 20px; height: 20px; background: var(--main); border-radius: 50%; cursor: pointer; opacity: .7; transition: transform .1s; }
+  .clickable:hover { opacity: 1; transform: scale(1.15); }
+  .clickable.sel { background: #e8590c; opacity: 1; }
+  .list { margin-top: 16px; display: none; text-align: left; max-width: 520px; margin-left: auto; margin-right: auto; }
+  .list h4 { text-align: center; }
+  .code { cursor: pointer; padding: 10px; border: 1px solid #ccc; margin: 5px 0; font-size: 16px; border-radius: 4px; }
+  .code:hover { background: #eef; }
+  .code.copied { background: #e6f4ea; border-color: var(--green); }
+
+  /* Date formatter */
+  .controls { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+  .format-toggle { margin: 6px; font-size: .9em; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .date-container-grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+  .date-series { position: relative; border: 1px solid #ddd; padding: 15px; padding-top: 44px; border-radius: 8px; background: #fafafa; min-width: 250px; }
+  .series-copy-btn { position: absolute; top: 8px; right: 8px; margin: 0 !important; padding: 5px 10px !important; font-size: 12px !important; background: var(--green) !important; }
+  .series-del-btn { position: absolute; top: 8px; left: 8px; margin: 0 !important; padding: 5px 9px !important; font-size: 12px !important; background: #bbb !important; }
+  .series-label { font-weight: bold; margin-bottom: 10px; border: none; border-bottom: 2px solid var(--main); text-align: center; font-size: 1.1em; width: 100%; outline: none; background: transparent; }
+  .date-series table { border-collapse: collapse; margin: 0 auto 10px; width: 100%; }
+  .date-series td { padding: 4px; }
+  .date-series input.d { width: 50px; text-align: center; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+  .date-series input.year-input { width: 60px; }
+
+  /* Todo */
+  .todo-wrap { max-width: 420px; margin: 0 auto; text-align: left; }
+  .input-group { display: flex; gap: 6px; }
+  .input-group input { flex: 1; padding: 9px; border: 1px solid #ddd; border-radius: 4px; font-size: 15px; }
+  .add-btn { padding: 8px 14px; cursor: pointer; background: var(--green); color: #fff; border: none; border-radius: 4px; font-size: 14px; }
+  ul.tl { list-style: none; padding: 0; margin: 16px 0 0; }
+  ul.tl li { border-bottom: 1px solid #eee; padding: 10px 6px; display: flex; align-items: center; gap: 8px; }
+  ul.tl li:last-child { border-bottom: none; }
+  ul.tl li input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+  ul.tl .text { flex: 1; word-break: break-word; }
+  ul.tl .del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 0 4px; visibility: hidden; }
+  ul.tl li:hover .del { visibility: visible; }
+  ul.tl .del:hover { color: #d33; }
+  .empty { color: #bbb; font-size: 13px; padding: 10px 6px; }
+  .done-header { margin-top: 24px; color: #999; font-size: 14px; border-top: 1px dashed #ddd; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .link-btn { background: none; border: none; color: #aaa; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0 0 0 10px; }
+  .link-btn:hover { color: var(--main); }
+  #doneList li { color: #aaa; }
+  #doneList .text { text-decoration: line-through; }
+  #doneList .time { color: #ccc; font-size: 11px; flex-shrink: 0; }
+  .backup { margin-top: 20px; font-size: 12px; color: #aaa; text-align: right; }
+  .warn { display: none; background: #fff4e5; border: 1px solid #f0b46b; color: #8a4b00; font-size: 13px; padding: 8px 10px; border-radius: 6px; margin-bottom: 12px; }
+
+  /* toast */
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: #333; color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 14px; opacity: 0; pointer-events: none; transition: all .2s; }
+  #toast.show { opacity: .92; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab" data-tab="icd">ICD Code</button>
+    <button class="tab" data-tab="date">日期格式</button>
+    <button class="tab" data-tab="todo">待辦清單<span class="badge" id="todoBadge"></span></button>
+  </div>
+
+  <!-- ICD -->
+  <div id="icdSection" class="section">
+    <h3>選擇部位</h3>
+    <div class="human" id="human">
+      <svg class="body-svg" viewBox="0 0 300 300" width="300" height="300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="人體正面輪廓">
+      <g fill="#a3a3a3" stroke="#a3a3a3" stroke-linecap="round" stroke-linejoin="round">
+        <!-- head & neck -->
+        <ellipse cx="150" cy="20" rx="12.5" ry="15.5" stroke="none"/>
+        <rect x="143.5" y="31" width="13" height="16" rx="4" stroke="none"/>
+        <!-- torso -->
+        <path stroke="none" d="M150,43 C167,43 182,46 186,55 C188,62 185,74 182,86 C179,99 176,111 177,125 C178,140 179,154 177,168 L123,168 C121,154 122,140 123,125 C124,111 121,99 118,86 C115,74 112,62 114,55 C118,46 133,43 150,43 Z"/>
+        <!-- arms -->
+        <path fill="none" stroke-width="15" d="M115,59 L104,101"/>
+        <path fill="none" stroke-width="12" d="M104,101 L97,141"/>
+        <path fill="none" stroke-width="15" d="M185,59 L196,101"/>
+        <path fill="none" stroke-width="12" d="M196,101 L203,141"/>
+        <!-- hands -->
+        <ellipse cx="95" cy="155" rx="6.5" ry="12" transform="rotate(10 95 155)" stroke="none"/>
+        <ellipse cx="205" cy="155" rx="6.5" ry="12" transform="rotate(-10 205 155)" stroke="none"/>
+        <!-- legs -->
+        <path fill="none" stroke-width="24" d="M137,160 L134,205"/>
+        <path fill="none" stroke-width="17" d="M134,205 L131,262"/>
+        <path fill="none" stroke-width="24" d="M163,160 L166,205"/>
+        <path fill="none" stroke-width="17" d="M166,205 L169,262"/>
+        <!-- feet -->
+        <path stroke="none" d="M124,258 L138,258 L139,276 C139,281 132,283 122,283 C114,283 113,278 118,275 L124,270 Z"/>
+        <path stroke="none" d="M176,258 L162,258 L161,276 C161,281 168,283 178,283 C186,283 187,278 182,275 L176,270 Z"/>
+      </g>
+      <g font-family="Arial, sans-serif" font-size="15" fill="#333" text-anchor="middle">
+        <text x="32" y="44">common</text>
+        <text x="262" y="44">others</text>
+      </g>
+    </svg>
+    </div>
+    <div id="codeList" class="list"></div>
+  </div>
+
+  <!-- Date formatter -->
+  <div id="dateSection" class="section">
+    <h3>Date Formatter</h3>
+    <div class="controls">
+      <div class="format-toggle">
+        <input type="checkbox" id="shortFormat">
+        <label for="shortFormat">Use Short Format (YYYY/MM/DD)</label>
+      </div>
+      <button class="btn" id="addSeriesBtn">+ Add New Series</button>
+    </div>
+    <div id="seriesWrapper" class="date-container-grid"></div>
+  </div>
+
+  <!-- Todo -->
+  <div id="todoSection" class="section">
+    <div class="todo-wrap">
+      <div class="warn" id="storageWarn">⚠️ 這個開啟方式無法在瀏覽器裡存資料（例如無痕模式或預覽視窗），重新整理後待辦會消失。請用 Chrome / Safari 一般視窗直接開這個檔案。</div>
+      <div class="input-group">
+        <input type="text" id="todoInput" placeholder="新增任務…（Enter 送出）">
+        <button class="add-btn" id="addTodoBtn">新增</button>
+      </div>
+      <ul class="tl" id="todoList"></ul>
+      <div class="done-header">
+        <span>已完成</span>
+        <button class="link-btn" id="clearDoneBtn">清空</button>
+      </div>
+      <ul class="tl" id="doneList"></ul>
+      <div class="backup">
+        備份：<button class="link-btn" id="exportBtn">匯出</button><button class="link-btn" id="importBtn">匯入</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ---------- 共用 ----------
+const $ = id => document.getElementById(id);
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1200);
+}
+function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext !== false) {
+    return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  }
+  fallbackCopy(text);
+  return Promise.resolve();
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+}
+
+// 安全的 localStorage（無法使用時退回記憶體並顯示警告）
+const store = (() => {
+  let ok = false;
+  try {
+    const k = '__t__' + Math.random();
+    localStorage.setItem(k, '1'); localStorage.removeItem(k); ok = true;
+  } catch (e) {}
+  const mem = {};
+  return {
+    ok,
+    get(k) { try { return ok ? localStorage.getItem(k) : (mem[k] ?? null); } catch (e) { return mem[k] ?? null; } },
+    set(k, v) { mem[k] = v; if (ok) { try { localStorage.setItem(k, v); } catch (e) {} } }
+  };
+})();
+
+// ---------- Tabs ----------
+const TAB_KEY = 'clinicHelper.tab';
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  $(name + 'Section').classList.add('active');
+  if (name === 'date' && !document.querySelector('.date-series')) addNewSeries('Treatment Dates');
+  if (name === 'todo') setTimeout(() => $('todoInput').focus(), 0);
+  store.set(TAB_KEY, name);
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showSection(t.dataset.tab)));
+
+// ---------- ICD ----------
+const icdCodes = {
+  common: [
+    'M25.48 - effusion',
+    'M7910 - myalgia',
+    'M659 - Synovitis and tenosynovitis',
+    'M7158 - bursitis',
+    'M792 - Neurlagia & Neuritis',
+    'M948X9 - 其他cartilage',
+    'M65.2 - Calcific tendinitis'
+  ],
+  others: [
+    'R53.1 - Weakness',
+    'R54 - Age-related physical debility',
+    'M62.59 - Muscle wasting and atrophy',
+    'I63.9 - CVA(重)',
+    'I62.9 - ICH(重)',
+    'T07 - multiple trauma(外傷 重)',
+    'S069 - TBI (非重大)',
+    'N186 - ESRD(重)'
+  ],
+  neck: [
+    'M54.2 - Cervicalgia',
+    'G542 - Cervical root disorders',
+    'M47.892 - C DJD',
+    'M4722 - C DJD w/ radiculopathy',
+    'S16.1XXA - cervical Strain'
+  ],
+  shoulder: [
+    'M75.0 - Adhesive capsulitis',
+    'M75.1 - Rotator cuff tear',
+    'M75.4 - Impingement ',
+    'S43.5 - AC sprain',
+    'S40.0 - contusion'
+  ],
+  elbow: [
+    'M77.10 - Lateral epicondylitis',
+    'M77.00 - medial epicondylitis',
+    'G5620 - ulnar neuropathy',
+    'S56.91 - forearm strain',
+    'S50.0 - contusion'
+  ],
+  WristHand: [
+    'M24.139 - TFCC',
+    'M65.4 - de Quervain',
+    'G56.0 - CTS',
+    'M19.049 - hand OA',
+    'M65.30 - Trigger finger',
+    'S60 - contusion'
+  ],
+  lumbar: [
+    'M54.50 - Low back pain',
+    'M47.896 - L DJD',
+    'M51.17 - L HIVD with radiculopathy',
+    'S39.012A - fascia',
+    'S33.6 - SI joint',
+    'M53.3 - Coccydynia',
+    'S30.0 - contusion'
+  ],
+  hip: [
+    'M16.9 - hip OA',
+    'M24.85 - 其他drrangement (FAI)',
+    'S70.0 - contusion'
+  ],
+  knee: [
+    'M17.0 - knee OA',
+    'S83.2 - Tear of meniscus',
+    'S83.4 - Sprain of MCL',
+    'M22 - PFPS',
+    'M763 - ITBS',
+    'S83.90XA - knee sprain',
+    'S80 - contusion'
+  ],
+  AnkleFoot: [
+    'S93.4 - Sprain of ankle',
+    'M72.2 - plantar fasciitis',
+    'M21.40 - Pes Planus',
+    'M77.40 - metatarsalgia',
+    'S90 - contusion'
+  ]
+};
+// 部位點的位置（同原版）
+const hotspots = [
+  ['common', 0, 20], ['others', 0, 250], ['neck', 38, 140], ['shoulder', 50, 110],
+  ['elbow', 90, 100], ['WristHand', 130, 96], ['lumbar', 120, 140], ['hip', 150, 120],
+  ['knee', 190, 120], ['AnkleFoot', 250, 115]
+];
+hotspots.forEach(([part, top, left]) => {
+  const dot = document.createElement('div');
+  dot.className = 'clickable';
+  dot.style.top = top + 'px'; dot.style.left = left + 'px';
+  dot.title = part;
+  dot.addEventListener('click', () => {
+    document.querySelectorAll('.clickable').forEach(d => d.classList.remove('sel'));
+    dot.classList.add('sel');
+    showCodes(part);
+  });
+  $('human').appendChild(dot);
+});
+
+function showCodes(part) {
+  const list = $('codeList');
+  list.innerHTML = '';
+  const h = document.createElement('h4');
+  h.textContent = 'Codes for ' + part.toUpperCase();
+  list.appendChild(h);
+  (icdCodes[part] || []).forEach(code => {
+    const div = document.createElement('div');
+    div.className = 'code';
+    div.textContent = code;
+    div.addEventListener('click', () => {
+      const formatted = code.split(' - ')[0].replace('.', '');
+      copyText(formatted).then(() => {
+        toast('已複製 ' + formatted);
+        div.classList.add('copied');
+        setTimeout(() => div.classList.remove('copied'), 800);
+      });
+    });
+    list.appendChild(div);
+  });
+  list.style.display = 'block';
+}
+
+// ---------- Date formatter ----------
+let seriesSeq = 0;
+function rowHTML() {
+  return `<td><input type="text" class="d year-input" placeholder="YYYY"></td>
+          <td><input type="text" class="d" placeholder="MM"></td>
+          <td><input type="text" class="d dd" placeholder="DD"></td>`;
+}
+function addNewSeries(label = 'Series Label') {
+  const id = 'series_' + (++seriesSeq);
+  const div = document.createElement('div');
+  div.className = 'date-series';
+  div.id = id;
+  div.innerHTML = `
+    <button class="btn series-del-btn" title="刪除這組">✕</button>
+    <button class="btn series-copy-btn">Copy</button>
+    <input type="text" class="series-label" placeholder="Label Name">
+    <table>
+      <thead><tr><th>Y</th><th>M</th><th>D</th></tr></thead>
+      <tbody><tr>${rowHTML()}</tr></tbody>
+    </table>
+    <button class="btn add-row-btn" style="padding:4px 8px;font-size:12px;">+ Row</button>`;
+  div.querySelector('.series-label').value = label;
+  div.querySelector('.series-copy-btn').addEventListener('click', () => formatSeriesDates(div));
+  div.querySelector('.series-del-btn').addEventListener('click', () => div.remove());
+  div.querySelector('.add-row-btn').addEventListener('click', () => addRow(div));
+  // 在最後一列的 DD 按 Tab 自動新增一列
+  div.querySelector('tbody').addEventListener('keydown', e => {
+    if (e.key !== 'Tab' || e.shiftKey || !e.target.classList.contains('dd')) return;
+    const rows = div.querySelectorAll('tbody tr');
+    if (e.target.closest('tr') === rows[rows.length - 1]) {
+      e.preventDefault();
+      addRow(div).querySelector('input').focus();
+    }
+  });
+  $('seriesWrapper').appendChild(div);
+  return div;
+}
+function addRow(div) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = rowHTML();
+  div.querySelector('tbody').appendChild(tr);
+  return tr;
+}
+function formatSeriesDates(div) {
+  const isShort = $('shortFormat').checked;
+  const dates = [];
+  div.querySelectorAll('tbody tr').forEach(row => {
+    const [y, m, d] = [...row.querySelectorAll('input')].map(i => i.value.trim());
+    if (m && d) {
+      dates.push(isShort
+        ? `${y ? y + '/' : ''}${m.padStart(2, '0')}/${d.padStart(2, '0')}`
+        : `${y ? y + '年' : ''}${m}月${d}日`);
+    }
+  });
+  if (!dates.length) return;
+  const str = dates.join('、');
+  copyText(str).then(() => {
+    toast('已複製 ' + str);
+    const btn = div.querySelector('.series-copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1000);
+  });
+}
+$('addSeriesBtn').addEventListener('click', () => addNewSeries());
+const FMT_KEY = 'clinicHelper.shortFormat';
+$('shortFormat').checked = store.get(FMT_KEY) === '1';
+$('shortFormat').addEventListener('change', e => store.set(FMT_KEY, e.target.checked ? '1' : '0'));
+
+// ---------- Todo（存在瀏覽器 localStorage，重新整理不會消失） ----------
+const TODO_KEY = 'simpleTodo';   // 與舊版 todo.html 相同 key，舊資料可沿用
+const DONE_LIMIT = 50;
+let todo = loadTodo();
+
+function loadTodo() {
+  try {
+    const d = JSON.parse(store.get(TODO_KEY));
+    if (d && Array.isArray(d.active) && Array.isArray(d.done)) return d;
+  } catch (e) {}
+  return { active: [], done: [] };
+}
+function saveTodo() {
+  if (todo.done.length > DONE_LIMIT) todo.done = todo.done.slice(0, DONE_LIMIT);
+  store.set(TODO_KEY, JSON.stringify(todo));
+}
+// 其他分頁改了也同步
+window.addEventListener('storage', e => { if (e.key === TODO_KEY) { todo = loadTodo(); renderTodo(); } });
+
+function fmtTime(ts) {
+  const d = new Date(ts), p = n => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function makeItem(item, done) {
+  const li = document.createElement('li');
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = done;
+  if (done) cb.title = '取消勾選，還原為待辦';
+  cb.addEventListener('click', () => done ? restore(item.id) : complete(item.id));
+  const span = document.createElement('span');
+  span.className = 'text';
+  span.textContent = item.text;
+  li.append(cb, span);
+  if (done) {
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = fmtTime(item.doneAt);
+    li.append(time);
+  }
+  const del = document.createElement('button');
+  del.className = 'del'; del.title = '刪除'; del.textContent = '✕';
+  del.addEventListener('click', () => removeItem(item.id, done));
+  li.append(del);
+  return li;
+}
+function renderTodo() {
+  const tl = $('todoList'), dl = $('doneList');
+  tl.innerHTML = ''; dl.innerHTML = '';
+  todo.active.forEach(i => tl.appendChild(makeItem(i, false)));
+  todo.done.forEach(i => dl.appendChild(makeItem(i, true)));
+  if (!todo.active.length) tl.innerHTML = '<li class="empty">目前沒有待辦 🎉</li>';
+  $('todoBadge').textContent = todo.active.length || '';
+}
+function addTodo() {
+  const input = $('todoInput');
+  const text = input.value.trim();
+  if (!text) return;
+  todo.active.push({ id: Date.now() + '' + Math.random(), text });
+  input.value = '';
+  saveTodo(); renderTodo();
+}
+function complete(id) {
+  const idx = todo.active.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  const item = todo.active.splice(idx, 1)[0];
+  item.doneAt = Date.now();
+  todo.done.unshift(item);
+  saveTodo(); renderTodo();
+}
+function restore(id) {
+  const idx = todo.done.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  const item = todo.done.splice(idx, 1)[0];
+  delete item.doneAt;
+  todo.active.push(item);
+  saveTodo(); renderTodo();
+}
+function removeItem(id, done) {
+  const arr = done ? todo.done : todo.active;
+  const idx = arr.findIndex(i => i.id === id);
+  if (idx !== -1) { arr.splice(idx, 1); saveTodo(); renderTodo(); }
+}
+$('addTodoBtn').addEventListener('click', addTodo);
+$('todoInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) addTodo(); });
+$('clearDoneBtn').addEventListener('click', () => {
+  if (todo.done.length && confirm('確定要清空已完成的項目嗎？')) { todo.done = []; saveTodo(); renderTodo(); }
+});
+
+// 匯出 / 匯入（換瀏覽器或電腦時用）
+$('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(todo, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  a.href = URL.createObjectURL(blob);
+  a.download = `todo-backup-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  f.text().then(txt => {
+    try {
+      const d = JSON.parse(txt);
+      if (!Array.isArray(d.active) || !Array.isArray(d.done)) throw 0;
+      const ids = new Set([...todo.active, ...todo.done].map(i => i.id));
+      d.active.forEach(i => { if (!ids.has(i.id)) todo.active.push(i); });
+      d.done.forEach(i => { if (!ids.has(i.id)) todo.done.push(i); });
+      todo.done.sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+      saveTodo(); renderTodo(); toast('已匯入');
+    } catch (err) { toast('檔案格式不對'); }
+    e.target.value = '';
+  });
+});
+
+if (!store.ok) $('storageWarn').style.display = 'block';
+renderTodo();
+
+// ---------- 啟動 ----------
+const lastTab = store.get(TAB_KEY);
+showSection(['icd', 'date', 'todo'].includes(lastTab) ? lastTab : 'icd');
+</script>
+</body>
+</html>
