@@ -1,4 +1,4 @@
-# 看診幫手 Clinic Helper
+# PMR看診幫手 / PMR Clinic Helper
 
 門診時用的小工具，單一 HTML 檔，不需安裝、不需網路後端，打開就能用。
 A tiny single-file web tool for outpatient clinic work.
