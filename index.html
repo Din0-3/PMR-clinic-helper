@@ -36,6 +36,29 @@
   .code:hover { background: #eef; }
   .code.copied { background: #e6f4ea; border-color: var(--green); }
 
+  /* PE templates */
+  .pe { display: none; max-width: 520px; margin: 22px auto 0; text-align: left; }
+  .pe-head { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 14px; margin-bottom: 8px; }
+  .pe-head h4 { margin: 0; }
+  .pe-card { border: 1px solid #ccc; border-radius: 6px; margin: 8px 0; background: #fcfcfd; }
+  .pe-card.editing { border-color: var(--main); box-shadow: 0 0 0 2px rgba(32,87,129,.12); }
+  .pe-top { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid #eee; }
+  .pe-title { flex: 1; font-weight: 600; font-size: 15px; word-break: break-word; }
+  .pe-title-input { flex: 1; font-weight: 600; font-size: 15px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; }
+  .pe-btn { border: 1px solid #ccc; background: #fff; color: #555; border-radius: 4px; padding: 3px 9px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .pe-btn:hover { border-color: var(--main); color: var(--main); }
+  .pe-btn.copy { background: var(--green); border-color: var(--green); color: #fff; }
+  .pe-btn.copy:hover { background: #1e7e34; color: #fff; }
+  .pe-btn.del:hover { border-color: #d33; color: #d33; }
+  .pe-text { margin: 0; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14px; line-height: 1.55; color: #333; cursor: pointer; }
+  .pe-text:hover { background: #f3f6fa; }
+  .pe-text.empty { color: #aaa; font-style: italic; }
+  .pe-area { display: block; width: 100%; min-height: 160px; padding: 10px 12px; border: none; border-radius: 0 0 6px 6px; font-family: inherit; font-size: 14px; line-height: 1.55; resize: vertical; outline: none; }
+  .pe-add { display: block; width: 100%; margin-top: 8px; padding: 8px; border: 1px dashed #bbb; background: none; color: #888; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .pe-add:hover { border-color: var(--main); color: var(--main); }
+  .pe-hint { font-size: 12px; color: #aaa; }
+  .icd-backup { max-width: 520px; margin: 14px auto 0; }
+
   /* Date formatter */
   .controls { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eee; }
   .format-toggle { margin: 6px; font-size: .9em; display: flex; align-items: center; justify-content: center; gap: 8px; }
@@ -100,6 +123,11 @@
     </svg>
     </div>
     <div id="codeList" class="list"></div>
+    <div id="peBox" class="pe"></div>
+    <div class="backup icd-backup">
+      PE 模版備份：<button class="link-btn" id="peExportBtn">匯出</button><button class="link-btn" id="peImportBtn">匯入</button>
+      <input type="file" id="peImportFile" accept=".json,application/json" style="display:none">
+    </div>
   </div>
 
   <!-- Date formatter -->
@@ -311,7 +339,241 @@ function showCodes(part) {
     list.appendChild(div);
   });
   list.style.display = 'block';
+  renderPE(part);
 }
+
+// ---------- PE 模版（存在瀏覽器 localStorage，可匯出匯入） ----------
+const PE_KEY = 'clinicHelper.pe';
+const PE_DEFAULTS = {
+  common: ['MSK 基本 PE',
+`Inspection: no swelling, erythema or deformity
+Palpation: tenderness over ___
+ROM: full / limited (___)
+Muscle power: 5/5
+Sensation: intact
+DTR: 2+, symmetric`],
+  others: ['Neuro / 功能評估',
+`Consciousness: clear
+Muscle power (R/L): UE __/__, LE __/__
+Muscle tone: normal
+Sensation: intact
+Sitting balance: ___ / Standing balance: ___
+Gait: ___
+ADL: ___`],
+  neck: ['Neck PE',
+`Cervical ROM: flex __ / ext __ / rot R __ L __ / lat-flex R __ L __
+Tenderness: paraspinal / trapezius ___
+Spurling test: R (-) L (-)
+Distraction test: (-)
+ULTT: R (-) L (-)
+UE power 5/5, sensation intact, DTR 2+`],
+  shoulder: ['Shoulder PE',
+`Tenderness: bicipital groove (-), AC joint (-), greater tuberosity (-)
+ROM (A/P): flex __ / abd __ / ER __ / IR __
+Painful arc: (-)
+Neer (-), Hawkins-Kennedy (-)
+Empty can (-), drop arm (-)
+Speed's (-), Yergason's (-)
+Lift-off / belly press (-)`],
+  elbow: ['Elbow PE',
+`Tenderness: lateral epicondyle (-), medial epicondyle (-)
+ROM: full
+Cozen's test (-), Mill's test (-)
+Golfer's elbow test (-)
+Tinel's sign at cubital tunnel (-)
+Elbow flexion test (-)`],
+  WristHand: ['Wrist / Hand PE',
+`Tenderness: 1st dorsal compartment (-), TFCC (-), A1 pulley (-)
+Finkelstein test (-)
+Tinel's sign at carpal tunnel (-), Phalen's test (-)
+Ulnar fovea sign (-), ulnocarpal stress test (-)
+Triggering: (-)
+Thenar atrophy (-), grip power: ___`],
+  lumbar: ['Lumbar PE',
+`Lumbar ROM: flex __ / ext __, pain on ___
+Tenderness: paraspinal / SI joint / coccyx ___
+SLR: R (-) L (-) (__°)
+Slump test (-)
+FABER (-), Gaenslen (-)
+LE power 5/5, sensation intact, DTR 2+
+Heel / toe walking: OK`],
+  hip: ['Hip PE',
+`Hip ROM: flex __ / IR __ / ER __ / abd __
+Tenderness: greater trochanter (-), groin (-)
+FABER (-), FADIR (-)
+Log roll (-)
+Trendelenburg sign (-)
+Ober test (-)`],
+  knee: ['Knee PE',
+`Effusion: (-), ballottement (-)
+Tenderness: MJL (-), LJL (-), pes anserinus (-), patellar tendon (-)
+ROM: 0 – ___°
+Lachman (-), anterior / posterior drawer (-)
+Valgus / varus stress at 0° & 30° (-)
+McMurray (-), Thessaly (-)
+Patellar grind (-), J sign (-)`],
+  AnkleFoot: ['Ankle / Foot PE',
+`Swelling: lateral / medial ___
+Tenderness: ATFL (-), CFL (-), deltoid (-), plantar fascia origin (-), MT head ___
+Anterior drawer (-), talar tilt (-)
+Squeeze test (-)
+Windlass test (-)
+Thompson test (-)
+Arch: normal / pes planus`]
+};
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function loadPE() {
+  let d = null;
+  try { d = JSON.parse(store.get(PE_KEY)); } catch (e) {}
+  if (!d || typeof d.parts !== 'object') d = { version: 1, parts: {} };
+  // 沒有資料的部位給一個預設範例
+  Object.keys(PE_DEFAULTS).forEach(p => {
+    if (!Array.isArray(d.parts[p])) d.parts[p] = [{ id: newId(), title: PE_DEFAULTS[p][0], text: PE_DEFAULTS[p][1] }];
+  });
+  return d;
+}
+let pe = loadPE();
+savePE();
+function savePE() { store.set(PE_KEY, JSON.stringify(pe)); }
+
+let pePart = null;
+let peEditing = null;   // 正在編輯的模版 id
+let peSaveTimer;
+
+function renderPE(part) {
+  if (part) pePart = part;
+  if (!pePart) return;
+  const box = $('peBox');
+  box.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = 'pe-head';
+  head.innerHTML = `<h4>PE 模版 — ${pePart.toUpperCase()}</h4><span class="pe-hint">點內文即可複製</span>`;
+  box.appendChild(head);
+  (pe.parts[pePart] || []).forEach(t => box.appendChild(peCard(t)));
+  const add = document.createElement('button');
+  add.className = 'pe-add';
+  add.textContent = '+ 新增模版';
+  add.addEventListener('click', () => {
+    const t = { id: newId(), title: '新模版', text: '' };
+    (pe.parts[pePart] = pe.parts[pePart] || []).push(t);
+    peEditing = t.id;
+    savePE(); renderPE();
+    const ti = box.querySelector('.pe-card.editing .pe-title-input');
+    if (ti) { ti.focus(); ti.select(); }
+  });
+  box.appendChild(add);
+  box.style.display = 'block';
+}
+
+function peCopy(t, btn) {
+  if (!t.text.trim()) { toast('模版是空的'); return; }
+  copyText(t.text).then(() => {
+    toast('已複製「' + t.title + '」');
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 1000); }
+  });
+}
+
+function peCard(t) {
+  const editing = peEditing === t.id;
+  const card = document.createElement('div');
+  card.className = 'pe-card' + (editing ? ' editing' : '');
+  const top = document.createElement('div');
+  top.className = 'pe-top';
+
+  if (editing) {
+    const ti = document.createElement('input');
+    ti.className = 'pe-title-input';
+    ti.value = t.title;
+    ti.placeholder = '模版名稱';
+    ti.addEventListener('input', () => { t.title = ti.value; peDeferSave(); });
+    const done = document.createElement('button');
+    done.className = 'pe-btn'; done.textContent = '完成';
+    done.addEventListener('click', () => { if (!t.title.trim()) t.title = '未命名模版'; peEditing = null; savePE(); renderPE(); });
+    top.append(ti, done);
+    const area = document.createElement('textarea');
+    area.className = 'pe-area';
+    area.value = t.text;
+    area.placeholder = '輸入 PE 內容…（自動儲存）';
+    area.addEventListener('input', () => { t.text = area.value; peDeferSave(); });
+    card.append(top, area);
+    return card;
+  }
+
+  const title = document.createElement('span');
+  title.className = 'pe-title';
+  title.textContent = t.title;
+  const copy = document.createElement('button');
+  copy.className = 'pe-btn copy'; copy.textContent = 'Copy';
+  copy.addEventListener('click', () => peCopy(t, copy));
+  const edit = document.createElement('button');
+  edit.className = 'pe-btn'; edit.textContent = '✎ 編輯';
+  edit.addEventListener('click', () => {
+    peEditing = t.id; renderPE();
+    const a = card.ownerDocument.querySelector('.pe-card.editing .pe-area');
+    if (a) a.focus();
+  });
+  const del = document.createElement('button');
+  del.className = 'pe-btn del'; del.textContent = '✕'; del.title = '刪除這個模版';
+  del.addEventListener('click', () => {
+    if (!confirm('確定刪除「' + t.title + '」？')) return;
+    pe.parts[pePart] = pe.parts[pePart].filter(x => x.id !== t.id);
+    savePE(); renderPE();
+  });
+  top.append(title, copy, edit, del);
+  const pre = document.createElement('pre');
+  pre.className = 'pe-text' + (t.text.trim() ? '' : ' empty');
+  pre.textContent = t.text.trim() ? t.text : '（空白，按「✎ 編輯」輸入內容）';
+  pre.title = '點一下複製';
+  pre.addEventListener('click', () => peCopy(t, copy));
+  card.append(top, pre);
+  return card;
+}
+function peDeferSave() { clearTimeout(peSaveTimer); peSaveTimer = setTimeout(savePE, 300); }
+window.addEventListener('beforeunload', savePE);
+window.addEventListener('storage', e => {
+  if (e.key === PE_KEY && !peEditing) { pe = loadPE(); renderPE(); }
+});
+
+// 匯出 / 匯入 PE 模版
+$('peExportBtn').addEventListener('click', () => {
+  savePE();
+  const out = { type: 'pmr-clinic-helper-pe', version: 1, exportedAt: new Date().toISOString(), parts: pe.parts };
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pe-templates-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('peImportBtn').addEventListener('click', () => $('peImportFile').click());
+$('peImportFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  f.text().then(txt => {
+    try {
+      const d = JSON.parse(txt);
+      if (!d || typeof d.parts !== 'object') throw 0;
+      let added = 0;
+      Object.entries(d.parts).forEach(([part, list]) => {
+        if (!Array.isArray(list)) return;
+        const cur = pe.parts[part] = pe.parts[part] || [];
+        list.forEach(t => {
+          if (!t || typeof t.text !== 'string') return;
+          const title = String(t.title || '未命名模版');
+          // 已有相同 id，或標題＋內容完全相同 → 略過
+          if (cur.some(x => x.id === t.id || (x.title === title && x.text === t.text))) return;
+          cur.push({ id: t.id || newId(), title, text: t.text });
+          added++;
+        });
+      });
+      savePE(); renderPE();
+      toast(added ? `已匯入 ${added} 個模版` : '沒有新的模版');
+    } catch (err) { toast('檔案格式不對'); }
+    e.target.value = '';
+  });
+});
 
 // ---------- Date formatter ----------
 let seriesSeq = 0;
