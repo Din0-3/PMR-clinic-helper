@@ -3,12 +3,12 @@
 門診時用的小工具，單一 HTML 檔，不需安裝、不需網路後端，打開就能用。
 A tiny single-file web tool for outpatient clinic work.
 
-**線上使用：** 啟用 GitHub Pages 後，網址為 [https://din0-3.github.io/PMR-clinic-helper/](https://din0-3.github.io/PMR-clinic-helper/)
+**線上使用：** 直接打開網址就可以使用了 [https://din0-3.github.io/PMR-clinic-helper/](https://din0-3.github.io/PMR-clinic-helper/)
 
 ## 功能
 
 **ICD Code**
-點人體圖上的部位，列出常用 ICD-10 碼；點一下即複製（自動去掉小數點，方便貼進 HIS）。
+點人體圖上的部位，列出常用 ICD-10 碼；點一下即複製。
 
 **日期格式**
 輸入多組治療日期，一鍵複製成 `3月5日、3月12日` 或 `2026/03/05、2026/03/12` 格式。最後一格按 Tab 會自動新增一列。
