@@ -38,6 +38,10 @@ knee: [
 
 ICD 碼清單為個人臨床常用整理，僅供參考，請以健保署公告之 ICD-10-CM 為準。本工具不提供任何醫療建議。
 
+## 致謝
+
+人體剪影：["Man and woman silhouettes 2"](https://openclipart.org/detail/345637/man-and-woman-silhouettes-2) by DG-RA，取自 Openclipart（Public Domain）。
+
 ## License
 
 [MIT](LICENSE)
