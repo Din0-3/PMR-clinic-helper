@@ -24,7 +24,7 @@ A tiny single-file web tool for outpatient clinic work.
 - 線上：開 GitHub Pages 網址即可
 - 離線：下載 `index.html`，用 Chrome 或 Safari 直接開啟
 
-> 待辦資料是「每個瀏覽器各自一份」。無痕模式或某些預覽視窗無法保存資料，頁面會顯示提醒。
+> 待辦與 PE 模版是「每個瀏覽器各自一份」。無痕模式下可以暫存，但關閉所有無痕視窗後資料就會清除；推薦定期「匯出」備份比較不會被其他人誤刪喔。
 
 ## 自訂 ICD 清單
 
